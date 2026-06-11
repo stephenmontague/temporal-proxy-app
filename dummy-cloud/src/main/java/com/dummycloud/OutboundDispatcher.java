@@ -1,24 +1,23 @@
 package com.dummycloud;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import io.temporal.api.enums.v1.ActivityIdConflictPolicy;
-import io.temporal.api.enums.v1.ActivityIdReusePolicy;
-import io.temporal.client.ActivityAlreadyStartedException;
-import io.temporal.client.ActivityClient;
-import io.temporal.client.StartActivityOptions;
-import io.temporal.client.UntypedActivityHandle;
+import io.temporal.api.enums.v1.WorkflowIdConflictPolicy;
+import io.temporal.api.enums.v1.WorkflowIdReusePolicy;
+import io.temporal.client.WorkflowClient;
+import io.temporal.client.WorkflowExecutionAlreadyStarted;
+import io.temporal.client.WorkflowOptions;
+import io.temporal.client.WorkflowStub;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
 import java.util.Map;
 
 /**
- * Starts the proxy's {@code DeliverToEdge} standalone activity for any outbound message
- * type. Activity ID = {type}-{businessId} with REJECT_DUPLICATE + USE_EXISTING gives
- * exactly-once dispatch semantics on top of at-least-once execution; because the task
- * lands in Temporal Cloud first, an offline proxy just means the delivery waits.
+ * Starts the proxy's {@code DeliverToEdge} workflow for any outbound message type.
+ * Workflow ID = {type}-{businessId} with REJECT_DUPLICATE + USE_EXISTING gives
+ * exactly-once dispatch semantics; because the workflow lands in Temporal first,
+ * an offline proxy just means the delivery waits until its worker reconnects.
  */
 @Service
 public class OutboundDispatcher {
@@ -26,11 +25,11 @@ public class OutboundDispatcher {
     private static final Logger log = LoggerFactory.getLogger(OutboundDispatcher.class);
     private static final String DELIVER_TO_EDGE = "DeliverToEdge";
 
-    private final ActivityClient activityClient;
+    private final WorkflowClient workflowClient;
     private final CloudProperties properties;
 
-    public OutboundDispatcher(ActivityClient activityClient, CloudProperties properties) {
-        this.activityClient = activityClient;
+    public OutboundDispatcher(WorkflowClient workflowClient, CloudProperties properties) {
+        this.workflowClient = workflowClient;
         this.properties = properties;
     }
 
@@ -42,23 +41,27 @@ public class OutboundDispatcher {
         }
         CanonicalMessage message =
                 new CanonicalMessage(messageType, idNode.asText(), body.toString());
+        String workflowId = message.activityId();
 
-        StartActivityOptions options = StartActivityOptions.newBuilder()
-                .setId(message.activityId())
+        WorkflowOptions options = WorkflowOptions.newBuilder()
+                .setWorkflowId(workflowId)
                 .setTaskQueue(properties.proxy().taskQueue())
-                .setStartToCloseTimeout(Duration.ofSeconds(30))
-                .setIdReusePolicy(ActivityIdReusePolicy.ACTIVITY_ID_REUSE_POLICY_REJECT_DUPLICATE)
-                .setIdConflictPolicy(ActivityIdConflictPolicy.ACTIVITY_ID_CONFLICT_POLICY_USE_EXISTING)
+                .setWorkflowIdReusePolicy(
+                        WorkflowIdReusePolicy.WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE)
+                .setWorkflowIdConflictPolicy(
+                        WorkflowIdConflictPolicy.WORKFLOW_ID_CONFLICT_POLICY_USE_EXISTING)
+                .setMemo(Map.of("origin",
+                        "[CLOUD] Dispatched from cloud application (dummy-cloud)"))
                 .build();
         try {
-            // Untyped start: the cloud app shares no code with the proxy, only the contract.
-            UntypedActivityHandle handle =
-                    activityClient.start(DELIVER_TO_EDGE, options, message);
-            log.info("dispatched {} (run {})", message.activityId(), handle.getActivityRunId());
-            return Map.of("activityId", message.activityId(), "duplicate", false);
-        } catch (ActivityAlreadyStartedException e) {
-            log.info("duplicate dispatch of {} collapsed", message.activityId());
-            return Map.of("activityId", message.activityId(), "duplicate", true);
+            WorkflowStub stub = workflowClient.newUntypedWorkflowStub(DELIVER_TO_EDGE, options);
+            stub.start(message);
+            log.info("[CLOUD] Started DeliverToEdge workflow {} — task queued in Temporal, " +
+                    "waiting for proxy worker to pick it up", workflowId);
+            return Map.of("workflowId", workflowId, "duplicate", false);
+        } catch (WorkflowExecutionAlreadyStarted e) {
+            log.info("duplicate dispatch of {} collapsed", workflowId);
+            return Map.of("workflowId", workflowId, "duplicate", true);
         }
     }
 }
