@@ -1,17 +1,20 @@
 # Cloud <-> Edge Proxy monorepo — build & demo recipes
-# No Docker. Local dev uses the Temporal CLI dev server + Maven (spring-boot:run).
-# Requires: just, Java 17+, Maven, Temporal CLI (v1.7.0+ for Standalone Activities).
+# Local dev targets the always-on Docker Temporal at localhost:7233
+# (~/git/temporal/docker-compose.yml — Server 1.31+ with activity.enableStandalone=true,
+# Web UI at http://localhost:8080). `just temporal-dev` is the no-Docker fallback.
+# Requires: just, Java 17+, Maven, Temporal CLI (v1.7.0+).
 #
 # Modules: proxy/ (the connector), dummy-cloud/ + dummy-edge/ (demo harness).
 # All recipes run from the repo root; the aggregator pom builds everything.
 
 set shell := ["bash", "-cu"]
 
-# Ports (keep in sync with PLAN.md > Appendix)
-proxy_admin_port := "8080"
-cloud_port       := "8081"
-edge_port        := "8082"
-temporal_ui_port := "8233"
+# Ports (keep in sync with PLAN.md > Appendix).
+# 809x keeps clear of the Docker Temporal UI (8080) and other local dev stacks.
+proxy_admin_port := "8090"
+cloud_port       := "8091"
+edge_port        := "8092"
+temporal_ui      := "http://localhost:8080"
 
 # Show available recipes
 default:
@@ -38,17 +41,25 @@ clean:
     mvn -q clean
 
 # ---------------------------------------------------------------------------
-# Local Temporal (no Docker)
+# Local Temporal
 # ---------------------------------------------------------------------------
 
-# Start a local Temporal dev server with the Web UI.
-# Standalone Activities (Public Preview) ship in Server 1.31.0 (CLI 1.7.0) but are gated
-# behind the `activity.enableStandalone` dynamic config flag — enabled here explicitly.
+# Verify the local Temporal server (Docker, localhost:7233) is up and standalone-activity
+# capable: needs Server 1.31+ and the activity.enableStandalone dynamic config flag.
+temporal-check:
+    @temporal operator cluster system | head -2
+    @temporal activity start --type HealthCheck --activity-id just-temporal-check \
+        --task-queue temporal-check-q --start-to-close-timeout 1s \
+        --schedule-to-close-timeout 2s --input '"ping"' > /dev/null \
+        && echo "OK: standalone activities are enabled"
+
+# Fallback when the Docker stack isn't running: a CLI dev server on the same port with
+# the standalone-activity flag enabled (Web UI at http://localhost:8233 in this case).
 temporal-dev:
-    temporal server start-dev --ui-port {{temporal_ui_port}} \
+    temporal server start-dev \
         --dynamic-config-value activity.enableStandalone=true
 
-# Quick health check against the local dev server
+# Quick health check against the local server
 temporal-status:
     temporal operator namespace list
 
@@ -69,7 +80,7 @@ run-dummy-edge:
     mvn -q -pl dummy-edge spring-boot:run -Dspring-boot.run.profiles=local
 
 # ---------------------------------------------------------------------------
-# Demo (assumes: temporal-dev, run-proxy, run-dummy-cloud, run-dummy-edge are up)
+# Demo (assumes: Temporal on 7233, run-proxy, run-dummy-cloud, run-dummy-edge are up)
 # ---------------------------------------------------------------------------
 
 # End-to-end HTTP round trip: WAVE_RELEASE (cloud->edge) then PICK_CONFIRM (edge->cloud)
@@ -78,7 +89,8 @@ demo-http:
     curl -fsS -X POST localhost:{{cloud_port}}/demo/wave-release \
         -H 'content-type: application/json' \
         -d '{"orderId":"ORD-1001","items":[{"sku":"ABC-123","qty":2}]}' | jq .
-    @echo ">> Inspect both standalone activities in the Temporal UI: http://localhost:{{temporal_ui_port}}"
+    @echo ">> Inspect both standalone activities in the Temporal UI: {{temporal_ui}}"
+    @sleep 2
     @echo ">> Check dummy-cloud received the PICK_CONFIRM:"
     curl -fsS localhost:{{cloud_port}}/demo/confirms | jq .
 

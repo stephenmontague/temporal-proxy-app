@@ -3,12 +3,12 @@ spring:
     name: dummy-edge
 
 server:
-  port: 8082
+  port: 8092
 
 edge:
   # Where this device pushes inbound messages (the proxy's ingress channels)
   proxy:
-    http-base: http://localhost:8080
+    http-base: http://localhost:8090
     pick-confirm-path: /pick-confirm
     tcp-host: 127.0.0.1
     putaway-confirm-port: 6001

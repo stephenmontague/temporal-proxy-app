@@ -1,7 +1,8 @@
 # Bootstrap-only configuration. Operational config (devices, routing, enabled) lives in
 # the ProxyControlWorkflow in Temporal and is hot-applied by the Reconciler.
 #
-# Default/local profile targets the Temporal CLI dev server (no mTLS).
+# Default/local profile targets a local Temporal server on 7233 (Docker stack or CLI dev
+# server) — Server 1.31+ with activity.enableStandalone=true required (no mTLS).
 # Activate the `cloud` profile to target Temporal Cloud with per-install mTLS creds.
 spring:
   application:
@@ -15,15 +16,16 @@ spring:
         - com.proxyapp.temporal
         - com.proxyapp.control
 
+# 8090-8092 keep clear of the local Docker Temporal UI (8080) and other dev stacks
 server:
-  port: 8080
+  port: 8090
 
 proxy:
   task-queue: proxy-main            # data path: DeliverToEdge / DeliverToCloud activities
   control-task-queue: proxy-control # control workflow; stays polling during soft-disable
   profile: warehouse                # which message catalog/profile to load
   cloud:
-    base-url: http://localhost:8081
+    base-url: http://localhost:8091
   ingress:
     tcp-port-pool: 6000-6010        # site infra: inbound TCP ports IT made available
     ftp-port: 2221

@@ -10,5 +10,5 @@ reference profile. A Temporal **client only** — it runs no worker.
 - `POST /control/enable | /control/disable | /control/apply-config`,
   `GET /control/state` — drive the proxy's `ProxyControlWorkflow` via signals/query.
 
-Run from the repo root: `just run-dummy-cloud` (port **8081**). Ports/targets
+Run from the repo root: `just run-dummy-cloud` (port **8091**). Ports/targets
 overridable via `SERVER_PORT`, `CLOUD_TEMPORAL_TARGET`.

@@ -39,16 +39,20 @@ lives in a **profile**; the **Warehouse** profile (WMS ↔ MHE) ships as the ref
 
 ## Prerequisites
 
-- Java 17+ (21 recommended), Maven, [`just`](https://github.com/casey/just)
-- Temporal CLI **v1.7.0+** (ships Server **1.31.0+**, required for Standalone Activities)
+- Java 17+ (21 recommended), Maven, [`just`](https://github.com/casey/just), Temporal CLI **v1.7.0+**
+- A local Temporal server on `localhost:7233` with **Server 1.31+** and the
+  `activity.enableStandalone` dynamic config flag (required for Standalone Activities).
+  The always-on Docker stack in `~/git/temporal/docker-compose.yml` provides this
+  (`temporalio/server:1.31.1`, Web UI at <http://localhost:8080>); without Docker,
+  `just temporal-dev` starts an equivalent CLI dev server.
 
-## Run the demo (4 terminals, all from this root)
+## Run the demo (3 terminals, all from this root)
 
 ```sh
-just temporal-dev        # 1: Temporal dev server (enables activity.enableStandalone)
-just run-proxy           # 2: the proxy        (:8080, worker on proxy-main/proxy-control)
-just run-dummy-cloud     # 3: dummy cloud app  (:8081, Temporal client only)
-just run-dummy-edge      # 4: dummy edge target(:8082 + TCP 9001 + FTP 2222)
+just temporal-check      # verify the Docker Temporal is up + standalone-capable
+just run-proxy           # 1: the proxy        (:8090, worker on proxy-main/proxy-control)
+just run-dummy-cloud     # 2: dummy cloud app  (:8091, Temporal client only)
+just run-dummy-edge      # 3: dummy edge target(:8092 + TCP 9001 + FTP 2222)
 ```
 
 Then:
@@ -66,13 +70,14 @@ just demo-state           # control workflow state (via cloud → Temporal query
 just proxy-status         # proxy's locally applied state (listeners, routes)
 ```
 
-Inspect executions in the Temporal UI at <http://localhost:8233> (standalone activities
-have their own nav item).
+Inspect executions in the Temporal UI at <http://localhost:8080> (standalone activities
+have their own nav item; the UI is at <http://localhost:8233> when using the
+`just temporal-dev` fallback instead of Docker).
 
-> **Port conflicts:** the demo uses 7233/8080/8081/8082 (see PLAN.md appendix). All ports
-> are overridable via standard Spring env vars, e.g.
-> `SERVER_PORT=8090 SPRING_TEMPORAL_CONNECTION_TARGET=127.0.0.1:7243 PROXY_CLOUD_BASE_URL=http://localhost:8091 PROXY_SEED_DEVICES_RESOURCE=file:./config/e2e-devices.json just run-proxy`
-> (the seed-file path resolves from this root, where all recipes run).
+> **Ports:** the demo apps use 8090/8091/8092 to stay clear of the Docker Temporal UI
+> (8080) and other local stacks (see PLAN.md appendix). Everything is overridable via
+> standard Spring env vars, e.g.
+> `SERVER_PORT=9090 SPRING_TEMPORAL_CONNECTION_TARGET=127.0.0.1:7243 just run-proxy`.
 
 ## Targeting Temporal Cloud
 

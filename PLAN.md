@@ -271,13 +271,17 @@ A web app the cloud-app operator uses to manage proxy installs. **Do not build y
 
 ## Appendix — Local ports
 
-| Component                        | Port      |
-| -------------------------------- | --------- |
-| Temporal dev server (gRPC)       | 7233      |
-| Temporal Web UI                  | 8233      |
-| Proxy HTTP ingress / admin       | 8080      |
-| dummy-cloud                      | 8081      |
-| dummy-edge                       | 8082      |
-| Proxy TCP inbound pool (example) | 6000–6010 |
+> Updated for the always-on Docker Temporal stack (`~/git/temporal/docker-compose.yml`):
+> its Web UI owns 8080, so the demo apps moved to 8090–8092.
+
+| Component                          | Port      |
+| ---------------------------------- | --------- |
+| Temporal server (Docker, gRPC)     | 7233      |
+| Temporal Web UI (Docker)           | 8080      |
+| Temporal Web UI (`just temporal-dev` fallback) | 8233 |
+| Proxy HTTP ingress / admin         | 8090      |
+| dummy-cloud                        | 8091      |
+| dummy-edge                         | 8092      |
+| Proxy TCP inbound pool (example)   | 6000–6010 |
 
 See `justfile` for build and demo recipes.

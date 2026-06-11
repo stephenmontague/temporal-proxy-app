@@ -12,5 +12,5 @@ three transports with one channel per message type, auto-generating the paired c
 `GET /received` lists everything the device received. Confirms are pushed after a small
 simulated delay and retried a few times if the proxy nacks — like a real device.
 
-Run from the repo root: `just run-dummy-edge` (port **8082**). Targets overridable via
+Run from the repo root: `just run-dummy-edge` (port **8092**). Targets overridable via
 `SERVER_PORT`, `EDGE_PROXY_HTTPBASE`, etc.
