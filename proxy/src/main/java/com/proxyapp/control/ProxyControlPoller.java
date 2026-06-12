@@ -32,6 +32,9 @@ public class ProxyControlPoller implements SmartLifecycle {
 
     private static final Logger log = LoggerFactory.getLogger(ProxyControlPoller.class);
     private static final long POLL_INTERVAL_MS = 2_000;
+    /** Whether something will relaunch us after exit 10 (supervisor wrapper / systemd). */
+    private static final boolean SUPERVISED =
+            Boolean.parseBoolean(System.getenv().getOrDefault("PROXY_SUPERVISED", "false"));
 
     private final WorkflowClient workflowClient;
     private final ProxyControlStarter starter;
@@ -108,7 +111,7 @@ public class ProxyControlPoller implements SmartLifecycle {
                 routingState.table().inboundHttpPaths().stream().sorted().toList(),
                 tcpSocketServer.activePorts().stream().sorted().toList(),
                 ftpIngressListener.activeFolders().stream().sorted().toList(),
-                startedAt, Instant.now().toString());
+                startedAt, Instant.now().toString(), SUPERVISED);
         stub.reportApplied(status);
         lastReportedVersion = appliedVersion;
         lastReportedEnabled = enabled;
@@ -132,6 +135,10 @@ public class ProxyControlPoller implements SmartLifecycle {
         stub.ackLifecycle(requestId);
         int exitCode = ProxyControlState.LIFECYCLE_RESTART.equals(command) ? RESTART_EXIT_CODE : 0;
         log.info("lifecycle command '{}' received from cloud — exiting with code {}", command, exitCode);
+        if (exitCode == RESTART_EXIT_CODE && !SUPERVISED) {
+            log.warn("no supervisor detected (PROXY_SUPERVISED unset) — nothing will relaunch "
+                    + "this process; run via 'just run-proxy-managed' or a service unit");
+        }
         Thread exitThread = new Thread(() -> {
             int code = SpringApplication.exit(applicationContext, () -> exitCode);
             System.exit(code);

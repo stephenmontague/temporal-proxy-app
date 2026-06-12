@@ -119,7 +119,7 @@ class ProxyControlWorkflowTest {
     void appliedReportIsReflectedInState() {
         workflow.reportApplied(new AppliedStatus(3, true, List.of("/pick-confirm"),
                 List.of(6001), List.of("cycle-count-confirm"),
-                "2026-06-11T12:00:00Z", "2026-06-11T12:00:05Z"));
+                "2026-06-11T12:00:00Z", "2026-06-11T12:00:05Z", true));
         AppliedStatus applied = workflow.getState().getApplied();
         assertThat(applied).isNotNull();
         assertThat(applied.version()).isEqualTo(3);

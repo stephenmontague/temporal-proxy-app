@@ -17,6 +17,10 @@ fi
 # "rebuild, then RESTART from the management UI" behave like a real deploy.
 RUN_JAR=proxy/target/proxy-app-run.jar
 
+# Lets the proxy report "I will come back after a restart" — the management UI warns
+# before RESTART when this is absent. Set it in your systemd unit too.
+export PROXY_SUPERVISED=true
+
 while true; do
   cp "${JAR}" "${RUN_JAR}"
   echo ">> supervisor: launching ${RUN_JAR} (from $(basename "${JAR}"))"

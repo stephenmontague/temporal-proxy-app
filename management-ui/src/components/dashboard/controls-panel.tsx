@@ -111,6 +111,11 @@ export function ControlsPanel({
             <p className="readout mt-2 text-[11px] font-medium text-signal">
               {state.lifecycleCommand} pending — waiting for the proxy to acknowledge…
             </p>
+          ) : state.applied?.supervised === false ? (
+            <p className="readout mt-2 border border-warn/40 bg-warn/10 px-2 py-1.5 text-[11px] leading-snug text-warn">
+              no supervisor detected — RESTART will exit and stay down. Run the proxy with
+              `just run-proxy-managed` (or a service unit) to make restarts come back.
+            </p>
           ) : (
             <p className="mt-2 text-[11px] leading-snug text-ink-faint">
               Rides Temporal like everything else — no management port on the proxy.
@@ -131,6 +136,14 @@ export function ControlsPanel({
                   {HARD_COPY[confirming].body}
                 </DialogDescription>
               </DialogHeader>
+              {confirming === "restart" && state.applied?.supervised === false && (
+                <p className="readout border border-err/40 bg-err/10 px-3 py-2 text-[12px] leading-snug text-err">
+                  The proxy reports NO supervisor — it will exit and nothing will relaunch
+                  it. Someone on-site (or you, locally) must start it again. Use{" "}
+                  <span className="font-semibold">just run-proxy-managed</span> for
+                  restartable runs.
+                </p>
+              )}
               <DialogFooter>
                 <Button variant="secondary" className="btn-hard" onClick={() => setConfirming(null)}>
                   Cancel

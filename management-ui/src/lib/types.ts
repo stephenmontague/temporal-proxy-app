@@ -57,6 +57,8 @@ export interface AppliedStatus {
   ftpFolders: string[];
   startedAt: string;
   reportedAt: string;
+  /** False = nothing will relaunch the proxy after RESTART (it acts like SHUTDOWN). */
+  supervised?: boolean;
 }
 
 /** The control workflow's queryable state (com.proxyapp.control.ProxyControlState). */

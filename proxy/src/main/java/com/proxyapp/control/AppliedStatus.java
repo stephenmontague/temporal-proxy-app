@@ -14,8 +14,11 @@ import java.util.List;
  * @param ftpFolders inbound FTP folders currently watched
  * @param startedAt  proxy process start time (ISO-8601, proxy clock)
  * @param reportedAt when this report was generated (ISO-8601, proxy clock)
+ * @param supervised whether a supervisor will relaunch the process after a restart
+ *                   command (PROXY_SUPERVISED env var, set by proxy-supervisor.sh or a
+ *                   service unit). False means RESTART behaves like SHUTDOWN.
  */
 public record AppliedStatus(long version, boolean enabled, List<String> httpPaths,
                             List<Integer> tcpPorts, List<String> ftpFolders,
-                            String startedAt, String reportedAt) {
+                            String startedAt, String reportedAt, boolean supervised) {
 }
