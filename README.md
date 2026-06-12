@@ -91,6 +91,8 @@ just demo-enable          # remote resume
 just demo-apply-config    # hot routing reload (config/sample-routes.json), no restart
 just demo-apply-bad-config# out-of-pool port → rejected with a clear message
 just demo-catalog         # define a custom message type at runtime (xml codec), no restart
+just demo-pick-http-xml   # XML round trip: device emits XML, xml codec extracts the id
+                          #   (needs: just run-dummy-edge-xml)
 just demo-state           # control workflow state (via cloud → Temporal query)
 just proxy-status         # proxy's locally applied state (listeners, routes)
 ```

@@ -24,11 +24,14 @@ public class HttpDeviceController {
 
     private final ReceivedStore receivedStore;
     private final ConfirmPusher confirmPusher;
+    private final EdgeProperties properties;
     private final ObjectMapper mapper = new ObjectMapper();
 
-    public HttpDeviceController(ReceivedStore receivedStore, ConfirmPusher confirmPusher) {
+    public HttpDeviceController(ReceivedStore receivedStore, ConfirmPusher confirmPusher,
+                                EdgeProperties properties) {
         this.receivedStore = receivedStore;
         this.confirmPusher = confirmPusher;
+        this.properties = properties;
     }
 
     @PostMapping("/pick-tasks")
@@ -36,12 +39,22 @@ public class HttpDeviceController {
         log.info("device received pick tasks: {}", body);
         receivedStore.add("HTTP", "/pick-tasks", body.toString());
 
+        String orderId = body.path("orderId").asText("");
+        // The xml profile makes this device speak XML; the proxy's xml codec pulls the
+        // business id out of the <orderId> element (just demo-pick-http-xml).
+        String payload = properties.xmlConfirms()
+                ? "<pickConfirm><orderId>" + orderId + "</orderId><status>PICKED</status></pickConfirm>"
+                : jsonConfirm(body);
+        confirmPusher.pushHttpPickConfirm(payload);
+        return Map.of("status", "accepted");
+    }
+
+    private String jsonConfirm(JsonNode body) {
         ObjectNode confirm = mapper.createObjectNode();
         confirm.set("orderId", body.get("orderId"));
         confirm.put("status", "PICKED");
         confirm.set("items", body.get("items"));
-        confirmPusher.pushHttpPickConfirm(confirm.toString());
-        return Map.of("status", "accepted");
+        return confirm.toString();
     }
 
     @GetMapping("/received")

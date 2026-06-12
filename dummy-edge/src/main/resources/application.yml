@@ -47,3 +47,14 @@ edge:
     end-delimiter: "\x1C\x0D"
     ack-reply: "\x0BACK\x1C\x0D"
     expected-ack: "ACK"
+
+---
+# Device speaks XML instead of JSON (just run-dummy-edge-xml). Pair with PICK_CONFIRM set to
+# the xml codec on the proxy — just demo-pick-http-xml does that switch automatically.
+spring:
+  config:
+    activate:
+      on-profile: xml
+
+edge:
+  xml: true

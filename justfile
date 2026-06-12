@@ -95,6 +95,10 @@ run-dummy-edge:
 run-dummy-edge-framed:
     mvn -q -pl dummy-edge spring-boot:run -Dspring-boot.run.profiles=local,framed
 
+# Run the dummy edge speaking XML instead of JSON. Pair with: just demo-pick-http-xml
+run-dummy-edge-xml:
+    mvn -q -pl dummy-edge spring-boot:run -Dspring-boot.run.profiles=local,xml
+
 # Run the management UI (Next.js dev server on http://localhost:3000)
 run-ui:
     @[ -d management-ui/node_modules ] || (cd management-ui && npm install)
@@ -182,6 +186,24 @@ demo-catalog:
         -d '{"type":"SHIPMENT_SCAN","direction":"EDGE_TO_CLOUD","codec":"xml","cloudEndpoint":"/api/shipment-scan","businessIdField":"shipmentId"}' \
         | jq '.state.typeDirections'
     @echo ">> SHIPMENT_SCAN is now routable — defined at runtime, no profile edit, no restart."
+
+# XML round trip over HTTP: device emits XML, the proxy's xml codec pulls the business id
+# from the <orderId> element. Needs dummy-edge on the xml profile (just run-dummy-edge-xml)
+# and the rebuilt dummy-cloud (for the upsert-message-type endpoint).
+demo-pick-http-xml:
+    @echo ">> Switching PICK_CONFIRM to the xml codec (live, no restart) ..."
+    curl -fsS -X POST localhost:{{cloud_port}}/control/upsert-message-type \
+        -H 'content-type: application/json' \
+        -d '{"type":"PICK_CONFIRM","direction":"EDGE_TO_CLOUD","codec":"xml","cloudEndpoint":"/api/pick-confirm","businessIdField":"orderId"}' \
+        | jq -c '.state.catalogEntries[] | select(.type=="PICK_CONFIRM")'
+    @sleep 3
+    @echo ">> Firing WAVE_RELEASE; the device returns an XML PICK_CONFIRM ..."
+    curl -fsS -X POST localhost:{{cloud_port}}/demo/wave-release \
+        -H 'content-type: application/json' \
+        -d '{"orderId":"ORD-XML","items":[{"sku":"X-1","qty":1}]}' | jq .
+    @sleep 3
+    @echo ">> Cloud received it (payload is raw XML; businessId extracted from <orderId>):"
+    curl -fsS localhost:{{cloud_port}}/demo/confirms | jq '[.[] | select(.businessId=="ORD-XML")]'
 
 # Push an INVALID routing config (TCP port outside the pool) -> expect rejection
 demo-apply-bad-config:
