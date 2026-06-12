@@ -48,7 +48,8 @@ export function Header({ address, namespace }: { address: string; namespace: str
           })}
         </nav>
         <div className="hidden items-center md:flex">
-          <span className="chip border-paper/25 bg-transparent text-paper/70">
+          {/* not .chip — its unlayered light background beats Tailwind overrides */}
+          <span className="inline-flex items-center gap-1 border border-paper/30 px-2 py-0.5 font-mono text-[11px] leading-[18px] text-paper/75">
             {address} · ns/{namespace}
           </span>
         </div>
